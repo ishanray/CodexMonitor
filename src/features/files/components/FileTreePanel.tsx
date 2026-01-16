@@ -16,6 +16,7 @@ import {
   FileText,
   FileVideo,
   Folder,
+  Search,
 } from "lucide-react";
 
 type FileTreeNode = {
@@ -179,10 +180,70 @@ export function FileTreePanel({
 }: FileTreePanelProps) {
   const { nodes, folderPaths } = useMemo(() => buildTree(files), [files]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
   const showLoading = isLoading && files.length === 0;
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const { filteredNodes, filteredFolderPaths, filteredFilesCount } = useMemo(() => {
+    if (!normalizedQuery) {
+      return {
+        filteredNodes: nodes,
+        filteredFolderPaths: folderPaths,
+        filteredFilesCount: files.length,
+      };
+    }
+
+    const matches = (value: string) => value.toLowerCase().includes(normalizedQuery);
+
+    const filterNode = (node: FileTreeNode): FileTreeNode | null => {
+      if (node.type === "file") {
+        return matches(node.name) ? node : null;
+      }
+      if (matches(node.name)) {
+        return node;
+      }
+      const nextChildren = node.children
+        .map((child) => filterNode(child))
+        .filter((child): child is FileTreeNode => Boolean(child));
+      if (nextChildren.length === 0) {
+        return null;
+      }
+      return {
+        ...node,
+        children: nextChildren,
+      };
+    };
+
+    const nextNodes = nodes
+      .map((node) => filterNode(node))
+      .filter((node): node is FileTreeNode => Boolean(node));
+
+    const nextFolderPaths = new Set<string>();
+    let nextFilesCount = 0;
+
+    const collect = (node: FileTreeNode) => {
+      if (node.type === "folder") {
+        nextFolderPaths.add(node.path);
+        node.children.forEach(collect);
+      } else {
+        nextFilesCount += 1;
+      }
+    };
+
+    nextNodes.forEach(collect);
+
+    return {
+      filteredNodes: nextNodes,
+      filteredFolderPaths: nextFolderPaths,
+      filteredFilesCount: nextFilesCount,
+    };
+  }, [files.length, folderPaths, nodes, normalizedQuery]);
 
   useEffect(() => {
     setExpandedFolders((prev) => {
+      if (normalizedQuery) {
+        return new Set(filteredFolderPaths);
+      }
       const next = new Set<string>();
       prev.forEach((path) => {
         if (folderPaths.has(path)) {
@@ -198,7 +259,7 @@ export function FileTreePanel({
       }
       return next;
     });
-  }, [folderPaths, nodes]);
+  }, [filteredFolderPaths, folderPaths, nodes, normalizedQuery]);
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -297,12 +358,25 @@ export function FileTreePanel({
           <ArrowLeftRight className="git-panel-switch-icon" aria-hidden />
         </button>
         <div className="file-tree-count">
-          {files.length
-            ? `${files.length} file${files.length === 1 ? "" : "s"}`
+          {filteredFilesCount
+            ? normalizedQuery
+              ? `${filteredFilesCount} match${filteredFilesCount === 1 ? "" : "es"}`
+              : `${filteredFilesCount} file${filteredFilesCount === 1 ? "" : "s"}`
             : showLoading
               ? "Loading files"
               : "No files"}
         </div>
+      </div>
+      <div className="file-tree-search">
+        <Search className="file-tree-search-icon" aria-hidden />
+        <input
+          className="file-tree-search-input"
+          type="search"
+          placeholder="Filter files and folders"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Filter files and folders"
+        />
       </div>
       <div className="file-tree-list">
         {showLoading ? (
@@ -315,10 +389,12 @@ export function FileTreePanel({
               />
             ))}
           </div>
-        ) : nodes.length === 0 ? (
-          <div className="file-tree-empty">No files available.</div>
+        ) : filteredNodes.length === 0 ? (
+          <div className="file-tree-empty">
+            {normalizedQuery ? "No matches found." : "No files available."}
+          </div>
         ) : (
-          nodes.map((node) => renderNode(node, 0))
+          filteredNodes.map((node) => renderNode(node, 0))
         )}
       </div>
     </aside>

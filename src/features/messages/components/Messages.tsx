@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { ConversationItem } from "../../../types";
 import { Markdown } from "./Markdown";
+import { useFileLinkOpener } from "../hooks/useFileLinkOpener";
 import { DiffBlock } from "../../git/components/DiffBlock";
 import { languageFromPath } from "../../../utils/syntax";
 
@@ -11,6 +12,7 @@ type MessagesProps = {
   isThinking: boolean;
   processingStartedAt?: number | null;
   lastDurationMs?: number | null;
+  workspacePath?: string | null;
 };
 
 type ToolSummary = {
@@ -207,6 +209,7 @@ export const Messages = memo(function Messages({
   isThinking,
   processingStartedAt = null,
   lastDurationMs = null,
+  workspacePath = null,
 }: MessagesProps) {
   const SCROLL_THRESHOLD_PX = 120;
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -217,6 +220,7 @@ export const Messages = memo(function Messages({
   const copyTimeoutRef = useRef<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const scrollKey = scrollKeyForItems(items);
+  const handleOpenFileLink = useFileLinkOpener(workspacePath);
 
   const isNearBottom = (node: HTMLDivElement) =>
     node.scrollHeight - node.scrollTop - node.clientHeight <= SCROLL_THRESHOLD_PX;
@@ -334,7 +338,11 @@ export const Messages = memo(function Messages({
           return (
             <div key={item.id} className={`message ${item.role}`}>
               <div className="bubble message-bubble">
-                <Markdown value={item.text} className="markdown" />
+                <Markdown
+                  value={item.text}
+                  className="markdown"
+                  onOpenFileLink={handleOpenFileLink}
+                />
                 <button
                   type="button"
                   className={`ghost message-copy-button${isCopied ? " is-copied" : ""}`}
@@ -404,6 +412,7 @@ export const Messages = memo(function Messages({
                     className={`reasoning-inline-detail markdown ${
                       isExpanded ? "" : "tool-inline-clamp"
                     }`}
+                    onOpenFileLink={handleOpenFileLink}
                   />
                 )}
               </div>
@@ -426,7 +435,11 @@ export const Messages = memo(function Messages({
                 </span>
               </div>
               {item.text && (
-                <Markdown value={item.text} className="item-text markdown" />
+                <Markdown
+                  value={item.text}
+                  className="item-text markdown"
+                  onOpenFileLink={handleOpenFileLink}
+                />
               )}
             </div>
           );
@@ -557,13 +570,18 @@ export const Messages = memo(function Messages({
                   </div>
                 )}
                 {isExpanded && isFileChange && !hasChanges && item.detail && (
-                  <Markdown value={item.detail} className="item-text markdown" />
+                  <Markdown
+                    value={item.detail}
+                    className="item-text markdown"
+                    onOpenFileLink={handleOpenFileLink}
+                  />
                 )}
                 {showToolOutput && summary.output && (
                   <Markdown
                     value={summary.output}
                     className="tool-inline-output markdown"
                     codeBlock
+                    onOpenFileLink={handleOpenFileLink}
                   />
                 )}
               </div>

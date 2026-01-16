@@ -263,6 +263,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       }
       processingStartedAt={activeThreadStatus?.processingStartedAt ?? null}
       lastDurationMs={activeThreadStatus?.lastDurationMs ?? null}
+      workspacePath={options.activeWorkspace?.path ?? null}
     />
   );
 

@@ -579,6 +579,10 @@ function MainApp() {
     lastAgentMessageByThread,
     interruptTurn,
     removeThread,
+    pinThread,
+    unpinThread,
+    isThreadPinned,
+    getPinTimestamp,
     startThreadForWorkspace,
     listThreadsForWorkspace,
     loadOlderThreadsForWorkspace,
@@ -1044,6 +1048,10 @@ function MainApp() {
       });
       removeImagesForThread(threadId);
     },
+    pinThread,
+    unpinThread,
+    isThreadPinned,
+    getPinTimestamp,
     onDeleteWorkspace: (workspaceId) => {
       void removeWorkspace(workspaceId);
     },

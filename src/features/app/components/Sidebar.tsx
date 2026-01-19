@@ -54,6 +54,10 @@ type SidebarProps = {
   onToggleWorkspaceCollapse: (workspaceId: string, collapsed: boolean) => void;
   onSelectThread: (workspaceId: string, threadId: string) => void;
   onDeleteThread: (workspaceId: string, threadId: string) => void;
+  pinThread: (workspaceId: string, threadId: string) => boolean;
+  unpinThread: (workspaceId: string, threadId: string) => void;
+  isThreadPinned: (workspaceId: string, threadId: string) => boolean;
+  getPinTimestamp: (workspaceId: string, threadId: string) => number | null;
   onDeleteWorkspace: (workspaceId: string) => void;
   onDeleteWorktree: (workspaceId: string) => void;
   onLoadOlderThreads: (workspaceId: string) => void;
@@ -86,6 +90,10 @@ export function Sidebar({
   onToggleWorkspaceCollapse,
   onSelectThread,
   onDeleteThread,
+  pinThread,
+  unpinThread,
+  isThreadPinned,
+  getPinTimestamp,
   onDeleteWorkspace,
   onDeleteWorktree,
   onLoadOlderThreads,
@@ -114,6 +122,9 @@ export function Sidebar({
   const { showThreadMenu, showWorkspaceMenu, showWorktreeMenu } =
     useSidebarMenus({
       onDeleteThread,
+      onPinThread: pinThread,
+      onUnpinThread: unpinThread,
+      isThreadPinned,
       onReloadWorkspaceThreads,
       onDeleteWorkspace,
       onDeleteWorktree,
@@ -215,9 +226,15 @@ export function Sidebar({
                   const isCollapsed = entry.settings.sidebarCollapsed;
                   const isExpanded = expandedWorkspaces.has(entry.id);
                   const {
-                    rows: threadRows,
+                    pinnedRows,
+                    unpinnedRows,
                     totalRoots: totalThreadRoots,
-                  } = getThreadRows(threads, isExpanded);
+                  } = getThreadRows(
+                    threads,
+                    isExpanded,
+                    entry.id,
+                    getPinTimestamp,
+                  );
                   const showThreads = !isCollapsed && threads.length > 0;
                   const isLoadingThreads =
                     threadListLoadingByWorkspace[entry.id] ?? false;
@@ -290,6 +307,8 @@ export function Sidebar({
                           activeThreadId={activeThreadId}
                           getThreadRows={getThreadRows}
                           getThreadTime={getThreadTime}
+                          isThreadPinned={isThreadPinned}
+                          getPinTimestamp={getPinTimestamp}
                           onSelectWorkspace={onSelectWorkspace}
                           onConnectWorkspace={onConnectWorkspace}
                           onToggleWorkspaceCollapse={onToggleWorkspaceCollapse}
@@ -303,7 +322,8 @@ export function Sidebar({
                       {showThreads && (
                         <ThreadList
                           workspaceId={entry.id}
-                          threadRows={threadRows}
+                          pinnedRows={pinnedRows}
+                          unpinnedRows={unpinnedRows}
                           totalThreadRoots={totalThreadRoots}
                           isExpanded={isExpanded}
                           nextCursor={nextCursor}
@@ -312,6 +332,7 @@ export function Sidebar({
                           activeThreadId={activeThreadId}
                           threadStatusById={threadStatusById}
                           getThreadTime={getThreadTime}
+                          isThreadPinned={isThreadPinned}
                           onToggleExpanded={handleToggleExpanded}
                           onLoadOlderThreads={onLoadOlderThreads}
                           onSelectThread={onSelectThread}

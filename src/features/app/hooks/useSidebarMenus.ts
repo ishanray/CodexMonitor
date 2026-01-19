@@ -5,6 +5,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type SidebarMenuHandlers = {
   onDeleteThread: (workspaceId: string, threadId: string) => void;
+  onPinThread: (workspaceId: string, threadId: string) => void;
+  onUnpinThread: (workspaceId: string, threadId: string) => void;
+  isThreadPinned: (workspaceId: string, threadId: string) => boolean;
   onReloadWorkspaceThreads: (workspaceId: string) => void;
   onDeleteWorkspace: (workspaceId: string) => void;
   onDeleteWorktree: (workspaceId: string) => void;
@@ -12,14 +15,38 @@ type SidebarMenuHandlers = {
 
 export function useSidebarMenus({
   onDeleteThread,
+  onPinThread,
+  onUnpinThread,
+  isThreadPinned,
   onReloadWorkspaceThreads,
   onDeleteWorkspace,
   onDeleteWorktree,
 }: SidebarMenuHandlers) {
   const showThreadMenu = useCallback(
-    async (event: MouseEvent, workspaceId: string, threadId: string) => {
+    async (
+      event: MouseEvent,
+      workspaceId: string,
+      threadId: string,
+      canPin: boolean,
+    ) => {
       event.preventDefault();
       event.stopPropagation();
+      const items = [];
+      if (canPin) {
+        const isPinned = isThreadPinned(workspaceId, threadId);
+        items.push(
+          await MenuItem.new({
+            text: isPinned ? "Unpin" : "Pin",
+            action: () => {
+              if (isPinned) {
+                onUnpinThread(workspaceId, threadId);
+              } else {
+                onPinThread(workspaceId, threadId);
+              }
+            },
+          }),
+        );
+      }
       const archiveItem = await MenuItem.new({
         text: "Archive",
         action: () => onDeleteThread(workspaceId, threadId),
@@ -30,12 +57,13 @@ export function useSidebarMenus({
           await navigator.clipboard.writeText(threadId);
         },
       });
-      const menu = await Menu.new({ items: [copyItem, archiveItem] });
+      items.push(copyItem, archiveItem);
+      const menu = await Menu.new({ items });
       const window = getCurrentWindow();
       const position = new LogicalPosition(event.clientX, event.clientY);
       await menu.popup(position, window);
     },
-    [onDeleteThread],
+    [isThreadPinned, onDeleteThread, onPinThread, onUnpinThread],
   );
 
   const showWorkspaceMenu = useCallback(

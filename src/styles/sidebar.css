@@ -441,6 +441,16 @@
   margin-left: 4px;
 }
 
+.thread-pin-icon {
+  font-size: 10px;
+  margin-right: 2px;
+  opacity: 0.7;
+}
+
+.thread-row:hover .thread-pin-icon {
+  opacity: 1;
+}
+
 .thread-status.processing {
   background: #ff9f43;
   box-shadow: 0 0 8px rgba(255, 159, 67, 0.8);
@@ -533,6 +543,16 @@
 
 .thread-more:hover {
   color: var(--text-stronger);
+}
+
+.thread-list-separator {
+  height: 1px;
+  margin: 6px 16px 6px 10px;
+  background: linear-gradient(
+    90deg,
+    var(--border-subtle) 0%,
+    transparent 100%
+  );
 }
 
 .worktree-section {

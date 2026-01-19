@@ -26,6 +26,7 @@ import "./styles/compact-tablet.css";
 import successSoundUrl from "./assets/success-notification.mp3";
 import errorSoundUrl from "./assets/error-notification.mp3";
 import { WorktreePrompt } from "./features/workspaces/components/WorktreePrompt";
+import { RenameThreadPrompt } from "./features/threads/components/RenameThreadPrompt";
 import { AboutView } from "./features/about/components/AboutView";
 import { SettingsView } from "./features/settings/components/SettingsView";
 import { DesktopLayout } from "./features/layout/components/DesktopLayout";
@@ -72,6 +73,7 @@ import { useDictationModel } from "./features/dictation/hooks/useDictationModel"
 import { useDictation } from "./features/dictation/hooks/useDictation";
 import { useHoldToDictate } from "./features/dictation/hooks/useHoldToDictate";
 import { useQueuedSend } from "./features/threads/hooks/useQueuedSend";
+import { useRenameThreadPrompt } from "./features/threads/hooks/useRenameThreadPrompt";
 import { useWorktreePrompt } from "./features/workspaces/hooks/useWorktreePrompt";
 import { useUiScaleShortcuts } from "./features/layout/hooks/useUiScaleShortcuts";
 import { useWorkspaceSelection } from "./features/workspaces/hooks/useWorkspaceSelection";
@@ -617,18 +619,22 @@ function MainApp() {
     onDebug: addDebugEntry,
   });
 
+  const {
+    renamePrompt,
+    openRenamePrompt,
+    handleRenamePromptChange,
+    handleRenamePromptCancel,
+    handleRenamePromptConfirm,
+  } = useRenameThreadPrompt({
+    threadsByWorkspace,
+    renameThread,
+  });
+
   const handleRenameThread = useCallback(
     (workspaceId: string, threadId: string) => {
-      const threads = threadsByWorkspace[workspaceId] ?? [];
-      const thread = threads.find((entry) => entry.id === threadId);
-      const currentName = thread?.name || "Thread";
-      const newName = window.prompt("Enter new name:", currentName);
-      if (!newName || !newName.trim() || newName === currentName) {
-        return;
-      }
-      renameThread(workspaceId, threadId, newName.trim());
+      openRenamePrompt(workspaceId, threadId);
     },
-    [renameThread, threadsByWorkspace],
+    [openRenamePrompt],
   );
 
   const {
@@ -1479,6 +1485,15 @@ function MainApp() {
           onSidebarResizeStart={onSidebarResizeStart}
           onRightPanelResizeStart={onRightPanelResizeStart}
           onPlanPanelResizeStart={onPlanPanelResizeStart}
+        />
+      )}
+      {renamePrompt && (
+        <RenameThreadPrompt
+          currentName={renamePrompt.originalName}
+          name={renamePrompt.name}
+          onChange={handleRenamePromptChange}
+          onCancel={handleRenamePromptCancel}
+          onConfirm={handleRenamePromptConfirm}
         />
       )}
       {worktreePrompt && (

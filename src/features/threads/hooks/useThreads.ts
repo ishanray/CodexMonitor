@@ -672,7 +672,15 @@ export function useThreads({
       }) => {
         dispatch({ type: "ensureThread", workspaceId, threadId });
         markProcessing(threadId, true);
-        dispatch({ type: "appendAgentDelta", workspaceId, threadId, itemId, delta });
+        const hasCustomName = Boolean(getCustomName(workspaceId, threadId));
+        dispatch({
+          type: "appendAgentDelta",
+          workspaceId,
+          threadId,
+          itemId,
+          delta,
+          hasCustomName,
+        });
       },
       onAgentMessageCompleted: ({
         workspaceId,
@@ -687,12 +695,14 @@ export function useThreads({
       }) => {
         const timestamp = Date.now();
         dispatch({ type: "ensureThread", workspaceId, threadId });
+        const hasCustomName = Boolean(getCustomName(workspaceId, threadId));
         dispatch({
           type: "completeAgentMessage",
           workspaceId,
           threadId,
           itemId,
           text,
+          hasCustomName,
         });
         dispatch({
           type: "setLastAgentMessage",
@@ -831,6 +841,7 @@ export function useThreads({
     }),
     [
       activeThreadId,
+      getCustomName,
       handleWorkspaceConnected,
       handleItemUpdate,
       handleToolOutputDelta,
@@ -1301,12 +1312,14 @@ export function useThreads({
         finalText = promptExpansion?.expanded ?? messageText;
       }
       recordThreadActivity(workspace.id, threadId);
+      const hasCustomName = Boolean(getCustomName(workspace.id, threadId));
       dispatch({
         type: "addUserMessage",
         workspaceId: workspace.id,
         threadId,
         text: finalText,
         images,
+        hasCustomName,
       });
       markProcessing(threadId, true);
       safeMessageActivity();
@@ -1383,6 +1396,7 @@ export function useThreads({
       collaborationMode,
       customPrompts,
       effort,
+      getCustomName,
       markProcessing,
       model,
       onDebug,

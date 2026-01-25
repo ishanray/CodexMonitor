@@ -43,7 +43,7 @@ import { useGitActions } from "./features/git/hooks/useGitActions";
 import { useAutoExitEmptyDiff } from "./features/git/hooks/useAutoExitEmptyDiff";
 import { useModels } from "./features/models/hooks/useModels";
 import { useCollaborationModes } from "./features/collaboration/hooks/useCollaborationModes";
-import { useCollaborationComposerOverrides } from "./features/collaboration/hooks/useCollaborationComposerOverrides";
+import { useCollaborationModeSelection } from "./features/collaboration/hooks/useCollaborationModeSelection";
 import { useSkills } from "./features/skills/hooks/useSkills";
 import { useCustomPrompts } from "./features/prompts/hooks/useCustomPrompts";
 import { useWorkspaceFiles } from "./features/workspaces/hooks/useWorkspaceFiles";
@@ -407,18 +407,6 @@ function MainApp() {
     enabled: appSettings.experimentalCollaborationModesEnabled,
     onDebug: addDebugEntry,
   });
-  const {
-    composerReasoningOptions,
-    composerSelectedEffort,
-    composerSelectedModelId,
-  } = useCollaborationComposerOverrides({
-    selectedCollaborationMode,
-    selectedCollaborationModeId,
-    models,
-    selectedModelId,
-    selectedEffort,
-    reasoningOptions,
-  });
   const { skills } = useSkills({ activeWorkspace, onDebug: addDebugEntry });
   const {
     prompts,
@@ -562,6 +550,17 @@ function MainApp() {
     setSelectedDiffPath,
   });
 
+  const { collaborationModePayload } = useCollaborationModeSelection({
+    selectedCollaborationMode,
+    selectedCollaborationModeId,
+    models,
+    selectedModelId,
+    selectedEffort,
+    resolvedModel,
+    setSelectedModelId,
+    setSelectedEffort,
+  });
+
   const {
     setActiveThreadId,
     activeThreadId,
@@ -595,14 +594,14 @@ function MainApp() {
     startReview,
     handleApprovalDecision,
     handleApprovalRemember,
-    handleUserInputSubmit
+    handleUserInputSubmit,
   } = useThreads({
     activeWorkspace,
     onWorkspaceConnected: markWorkspaceConnected,
     onDebug: addDebugEntry,
     model: resolvedModel,
     effort: selectedEffort,
-    collaborationMode: selectedCollaborationMode?.value ?? null,
+    collaborationMode: collaborationModePayload,
     accessMode,
     steerEnabled: appSettings.experimentalSteerEnabled,
     customPrompts: prompts,
@@ -1647,10 +1646,10 @@ function MainApp() {
     selectedCollaborationModeId,
     onSelectCollaborationMode: setSelectedCollaborationModeId,
     models,
-    selectedModelId: composerSelectedModelId,
+    selectedModelId,
     onSelectModel: setSelectedModelId,
-    reasoningOptions: composerReasoningOptions,
-    selectedEffort: composerSelectedEffort,
+    reasoningOptions,
+    selectedEffort,
     onSelectEffort: setSelectedEffort,
     accessMode,
     onSelectAccessMode: setAccessMode,

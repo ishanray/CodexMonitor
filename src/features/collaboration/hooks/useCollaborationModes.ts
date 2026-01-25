@@ -62,39 +62,66 @@ export function useCollaborationModes({
           if (!item || typeof item !== "object") {
             return null;
           }
-          const mode = String(item.mode ?? "");
+          const mode = String(item.mode ?? item.name ?? "");
           if (!mode) {
             return null;
           }
+          const normalizedMode = mode.trim().toLowerCase();
+          if (normalizedMode && normalizedMode !== "plan" && normalizedMode !== "code") {
+            return null;
+          }
+
           const settings =
             item.settings && typeof item.settings === "object"
               ? item.settings
-              : null;
-          if (!settings) {
-            return null;
-          }
+              : {
+                  model: item.model ?? null,
+                  reasoning_effort:
+                    item.reasoning_effort ?? item.reasoningEffort ?? null,
+                  developer_instructions:
+                    item.developer_instructions ??
+                    item.developerInstructions ??
+                    null,
+                };
 
           const model = String(settings.model ?? "");
           const reasoningEffort = settings.reasoning_effort ?? null;
           const developerInstructions = settings.developer_instructions ?? null;
 
+          const labelSource = String(item.name ?? item.label ?? mode);
+
+          const normalizedValue = {
+            ...(item as Record<string, unknown>),
+            mode: normalizedMode,
+          };
+
           return {
-            id: mode,
-            label: formatCollaborationModeLabel(mode),
-            mode,
+            id: normalizedMode,
+            label: formatCollaborationModeLabel(labelSource),
+            mode: normalizedMode,
             model,
             reasoningEffort: reasoningEffort ? String(reasoningEffort) : null,
             developerInstructions: developerInstructions
               ? String(developerInstructions)
               : null,
-            value: item as Record<string, unknown>,
+            value: normalizedValue,
           };
         })
         .filter(Boolean);
       setModes(data);
       lastFetchedWorkspaceId.current = workspaceId;
-      if (selectedModeId && !data.some((mode) => mode.id === selectedModeId)) {
-        setSelectedModeId(null);
+      const preferredModeId =
+        data.find((mode) => mode.mode === "code" || mode.id === "code")?.id ??
+        data[0]?.id ??
+        null;
+      if (!selectedModeId) {
+        if (preferredModeId) {
+          setSelectedModeId(preferredModeId);
+        }
+        return;
+      }
+      if (!data.some((mode) => mode.id === selectedModeId)) {
+        setSelectedModeId(preferredModeId);
       }
     } catch (error) {
       onDebug?.({

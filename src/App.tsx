@@ -43,6 +43,7 @@ import { useGitActions } from "./features/git/hooks/useGitActions";
 import { useAutoExitEmptyDiff } from "./features/git/hooks/useAutoExitEmptyDiff";
 import { useModels } from "./features/models/hooks/useModels";
 import { useCollaborationModes } from "./features/collaboration/hooks/useCollaborationModes";
+import { useCollaborationModeSelection } from "./features/collaboration/hooks/useCollaborationModeSelection";
 import { useSkills } from "./features/skills/hooks/useSkills";
 import { useCustomPrompts } from "./features/prompts/hooks/useCustomPrompts";
 import { useWorkspaceFiles } from "./features/workspaces/hooks/useWorkspaceFiles";
@@ -94,6 +95,8 @@ import type {
   ComposerEditorSettings,
   WorkspaceInfo,
 } from "./types";
+import { OPEN_APP_STORAGE_KEY } from "./features/app/constants";
+import { useOpenAppIcons } from "./features/app/hooks/useOpenAppIcons";
 
 const AboutView = lazy(() =>
   import("./features/about/components/AboutView").then((module) => ({
@@ -371,14 +374,31 @@ function MainApp() {
     preferredEffort: appSettings.lastComposerReasoningEffort,
   });
 
+  const {
+    collaborationModes,
+    selectedCollaborationMode,
+    selectedCollaborationModeId,
+    setSelectedCollaborationModeId,
+  } = useCollaborationModes({
+    activeWorkspace,
+    enabled: appSettings.experimentalCollaborationModesEnabled,
+    onDebug: addDebugEntry,
+  });
+
   useComposerShortcuts({
     textareaRef: composerInputRef,
     modelShortcut: appSettings.composerModelShortcut,
     accessShortcut: appSettings.composerAccessShortcut,
     reasoningShortcut: appSettings.composerReasoningShortcut,
+    collaborationShortcut: appSettings.experimentalCollaborationModesEnabled
+      ? appSettings.composerCollaborationShortcut
+      : null,
     models,
+    collaborationModes,
     selectedModelId,
     onSelectModel: setSelectedModelId,
+    selectedCollaborationModeId,
+    onSelectCollaborationMode: setSelectedCollaborationModeId,
     accessMode,
     onSelectAccessMode: setAccessMode,
     reasoningOptions,
@@ -390,23 +410,15 @@ function MainApp() {
     models,
     selectedModelId,
     onSelectModel: setSelectedModelId,
+    collaborationModes,
+    selectedCollaborationModeId,
+    onSelectCollaborationMode: setSelectedCollaborationModeId,
     accessMode,
     onSelectAccessMode: setAccessMode,
     reasoningOptions,
     selectedEffort,
     onSelectEffort: setSelectedEffort,
     onFocusComposer: () => composerInputRef.current?.focus(),
-  });
-
-  const {
-    collaborationModes,
-    selectedCollaborationMode,
-    selectedCollaborationModeId,
-    setSelectedCollaborationModeId,
-  } = useCollaborationModes({
-    activeWorkspace,
-    enabled: appSettings.experimentalCollaborationModesEnabled,
-    onDebug: addDebugEntry,
   });
   const { skills } = useSkills({ activeWorkspace, onDebug: addDebugEntry });
   const {
@@ -551,6 +563,13 @@ function MainApp() {
     setSelectedDiffPath,
   });
 
+  const { collaborationModePayload } = useCollaborationModeSelection({
+    selectedCollaborationMode,
+    selectedCollaborationModeId,
+    selectedEffort,
+    resolvedModel,
+  });
+
   const {
     setActiveThreadId,
     activeThreadId,
@@ -584,14 +603,14 @@ function MainApp() {
     startReview,
     handleApprovalDecision,
     handleApprovalRemember,
-    handleUserInputSubmit
+    handleUserInputSubmit,
   } = useThreads({
     activeWorkspace,
     onWorkspaceConnected: markWorkspaceConnected,
     onDebug: addDebugEntry,
     model: resolvedModel,
     effort: selectedEffort,
-    collaborationMode: selectedCollaborationMode?.value ?? null,
+    collaborationMode: collaborationModePayload,
     accessMode,
     steerEnabled: appSettings.experimentalSteerEnabled,
     customPrompts: prompts,
@@ -713,6 +732,28 @@ function MainApp() {
     },
     [appSettings.workspaceGroups],
   );
+
+  const handleSelectOpenAppId = useCallback(
+    (id: string) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OPEN_APP_STORAGE_KEY, id);
+      }
+      setAppSettings((current) => {
+        if (current.selectedOpenAppId === id) {
+          return current;
+        }
+        const nextSettings = {
+          ...current,
+          selectedOpenAppId: id,
+        };
+        void queueSaveSettings(nextSettings);
+        return nextSettings;
+      });
+    },
+    [queueSaveSettings, setAppSettings],
+  );
+
+  const openAppIconById = useOpenAppIcons(appSettings.openAppTargets);
 
   const persistProjectCopiesFolder = useCallback(
     async (groupId: string, copiesFolder: string) => {
@@ -1385,6 +1426,10 @@ function MainApp() {
     activeItems,
     activeRateLimits,
     codeBlockCopyUseModifier: appSettings.composerCodeBlockCopyUseModifier,
+    openAppTargets: appSettings.openAppTargets,
+    openAppIconById,
+    selectedOpenAppId: appSettings.selectedOpenAppId,
+    onSelectOpenAppId: handleSelectOpenAppId,
     approvals,
     userInputRequests,
     handleApprovalDecision,
@@ -1876,6 +1921,7 @@ function MainApp() {
           reduceTransparency,
           onToggleTransparency: setReduceTransparency,
           appSettings,
+          openAppIconById,
           onUpdateAppSettings: async (next) => {
             await queueSaveSettings(next);
           },

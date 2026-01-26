@@ -3,7 +3,7 @@ import Check from "lucide-react/dist/esm/icons/check";
 import Copy from "lucide-react/dist/esm/icons/copy";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import type { BranchInfo, WorkspaceInfo } from "../../../types";
+import type { BranchInfo, OpenAppTarget, WorkspaceInfo } from "../../../types";
 import type { ReactNode } from "react";
 import { OpenAppMenu } from "./OpenAppMenu";
 import { LaunchScriptButton } from "./LaunchScriptButton";
@@ -15,6 +15,10 @@ type MainHeaderProps = {
   disableBranchMenu?: boolean;
   parentPath?: string | null;
   worktreePath?: string | null;
+  openTargets: OpenAppTarget[];
+  openAppIconById: Record<string, string>;
+  selectedOpenAppId: string;
+  onSelectOpenAppId: (id: string) => void;
   branchName: string;
   branches: BranchInfo[];
   onCheckoutBranch: (name: string) => Promise<void> | void;
@@ -62,6 +66,10 @@ export function MainHeader({
   disableBranchMenu = false,
   parentPath = null,
   worktreePath = null,
+  openTargets,
+  openAppIconById,
+  selectedOpenAppId,
+  onSelectOpenAppId,
   branchName,
   branches,
   onCheckoutBranch,
@@ -501,7 +509,13 @@ export function MainHeader({
         </div>
       </div>
       <div className="main-header-actions">
-        <OpenAppMenu path={resolvedWorktreePath} />
+        <OpenAppMenu
+          path={resolvedWorktreePath}
+          openTargets={openTargets}
+          selectedOpenAppId={selectedOpenAppId}
+          onSelectOpenAppId={onSelectOpenAppId}
+          iconById={openAppIconById}
+        />
         {onRunLaunchScript &&
           onOpenLaunchScriptEditor &&
           onCloseLaunchScriptEditor &&

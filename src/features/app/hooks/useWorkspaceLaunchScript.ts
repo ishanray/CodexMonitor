@@ -104,16 +104,15 @@ export function useWorkspaceLaunchScript({
     }
     setError(null);
     const terminalId = ensureLaunchTerminal(activeWorkspace.id);
+    pendingRunRef.current = {
+      workspaceId: activeWorkspace.id,
+      terminalId,
+      script,
+    };
     openTerminal();
     restartLaunchSession(activeWorkspace.id, terminalId)
-      .then(() => {
-        pendingRunRef.current = {
-          workspaceId: activeWorkspace.id,
-          terminalId,
-          script,
-        };
-      })
       .catch((err) => {
+        pendingRunRef.current = null;
         setError(err instanceof Error ? err.message : String(err));
       });
   }, [

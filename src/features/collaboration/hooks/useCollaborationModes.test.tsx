@@ -36,6 +36,12 @@ const makeModesResponse = () => ({
   },
 });
 
+const makeModesResponseArrayResult = () => ({
+  result: [{ mode: "plan" }, { mode: "code" }],
+});
+
+const makeModesResponseTopLevelArray = () => [{ mode: "plan" }, { mode: "code" }];
+
 describe("useCollaborationModes", () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -94,5 +100,34 @@ describe("useCollaborationModes", () => {
     expect(result.current.selectedCollaborationModeId).toBeNull();
     expect(result.current.collaborationModes).toEqual([]);
   });
-});
 
+  it("accepts alternate response shapes from the backend", async () => {
+    vi.mocked(getCollaborationModes)
+      .mockResolvedValueOnce(makeModesResponseArrayResult() as any)
+      .mockResolvedValueOnce(makeModesResponseTopLevelArray() as any);
+
+    const { result, rerender } = renderHook(
+      ({ workspace }: { workspace: WorkspaceInfo | null }) =>
+        useCollaborationModes({ activeWorkspace: workspace, enabled: true }),
+      {
+        initialProps: { workspace: workspaceOne },
+      },
+    );
+
+    await waitFor(() =>
+      expect(result.current.collaborationModes.map((mode) => mode.id)).toEqual([
+        "plan",
+        "code",
+      ]),
+    );
+
+    rerender({ workspace: { ...workspaceOne, id: "workspace-1b" } });
+
+    await waitFor(() =>
+      expect(result.current.collaborationModes.map((mode) => mode.id)).toEqual([
+        "plan",
+        "code",
+      ]),
+    );
+  });
+});

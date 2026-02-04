@@ -28,6 +28,35 @@ export function useCollaborationModes({
   const workspaceId = activeWorkspace?.id ?? null;
   const isConnected = Boolean(activeWorkspace?.connected);
 
+  const extractModeList = useCallback((response: any): any[] => {
+    const candidates = [
+      response?.result?.data,
+      response?.result?.modes,
+      response?.result,
+      response?.data,
+      response?.modes,
+      response,
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+      if (candidate && typeof candidate === "object") {
+        const nested = (candidate as any).data ?? (candidate as any).modes;
+        if (Array.isArray(nested)) {
+          return nested;
+        }
+        if (nested && typeof nested === "object") {
+          const deep = (nested as any).data ?? (nested as any).modes;
+          if (Array.isArray(deep)) {
+            return deep;
+          }
+        }
+      }
+    }
+    return [];
+  }, []);
+
   const selectedMode = useMemo(
     () => modes.find((mode) => mode.id === selectedModeId) ?? null,
     [modes, selectedModeId],
@@ -57,7 +86,7 @@ export function useCollaborationModes({
         label: "collaborationMode/list response",
         payload: response,
       });
-      const rawData = response.result?.data ?? response.data ?? [];
+      const rawData = extractModeList(response);
       const data: CollaborationModeOption[] = rawData
         .map((item: any) => {
           if (!item || typeof item !== "object") {
@@ -91,12 +120,12 @@ export function useCollaborationModes({
 
           const labelSource = String(item.name ?? item.label ?? mode);
 
-          const normalizedValue = {
+          const normalizedValue: Record<string, unknown> = {
             ...(item as Record<string, unknown>),
             mode: normalizedMode,
           };
 
-          return {
+          const option: CollaborationModeOption = {
             id: normalizedMode,
             label: formatCollaborationModeLabel(labelSource),
             mode: normalizedMode,
@@ -107,8 +136,9 @@ export function useCollaborationModes({
               : null,
             value: normalizedValue,
           };
+          return option;
         })
-        .filter(Boolean);
+        .filter((mode): mode is CollaborationModeOption => mode !== null);
       setModes(data);
       lastFetchedWorkspaceId.current = workspaceId;
       const preferredModeId =
@@ -136,7 +166,7 @@ export function useCollaborationModes({
     } finally {
       inFlight.current = false;
     }
-  }, [enabled, isConnected, onDebug, workspaceId]);
+  }, [enabled, extractModeList, isConnected, onDebug, workspaceId]);
 
   useEffect(() => {
     selectedModeIdRef.current = selectedModeId;

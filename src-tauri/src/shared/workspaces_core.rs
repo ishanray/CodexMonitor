@@ -377,7 +377,14 @@ where
     }
 
     if copy_agents_md {
-        copy_agents_md_from_parent_to_worktree(&repo_path, &worktree_path)?;
+        if let Err(error) = copy_agents_md_from_parent_to_worktree(&repo_path, &worktree_path) {
+            eprintln!(
+                "add_worktree: optional {} copy failed for {}: {}",
+                AGENTS_MD_FILE_NAME,
+                worktree_path.display(),
+                error
+            );
+        }
     }
 
     let entry = WorkspaceEntry {

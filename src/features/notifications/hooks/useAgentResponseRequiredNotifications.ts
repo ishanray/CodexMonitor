@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ApprovalRequest,
   DebugEntry,
@@ -52,6 +52,12 @@ type ResponseRequiredNotificationOptions = {
   onDebug?: (entry: DebugEntry) => void;
 };
 
+type PendingPlanNotification = {
+  title: string;
+  body: string;
+  extra: Record<string, unknown>;
+};
+
 export function useAgentResponseRequiredNotifications({
   enabled,
   isWindowFocused,
@@ -64,6 +70,10 @@ export function useAgentResponseRequiredNotifications({
   const notifiedApprovalsRef = useRef(new Set<string>());
   const notifiedUserInputsRef = useRef(new Set<string>());
   const notifiedPlanItemsRef = useRef(new Set<string>());
+  const pendingPlanNotificationsRef = useRef(new Map<string, PendingPlanNotification>());
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [retrySignal, setRetrySignal] = useState(0);
+  const [pendingPlansSignal, setPendingPlansSignal] = useState(0);
 
   const canNotifyNow = useCallback(() => {
     if (!enabled) {
@@ -78,6 +88,20 @@ export function useAgentResponseRequiredNotifications({
     }
     lastNotifiedAtRef.current = Date.now();
     return true;
+  }, [enabled, isWindowFocused]);
+
+  const scheduleRetry = useCallback(() => {
+    if (!enabled || isWindowFocused || retryTimeoutRef.current) {
+      return;
+    }
+    const elapsed = lastNotifiedAtRef.current
+      ? Date.now() - lastNotifiedAtRef.current
+      : MIN_NOTIFICATION_SPACING_MS;
+    const delay = Math.max(0, MIN_NOTIFICATION_SPACING_MS - elapsed);
+    retryTimeoutRef.current = setTimeout(() => {
+      retryTimeoutRef.current = null;
+      setRetrySignal((value) => value + 1);
+    }, delay);
   }, [enabled, isWindowFocused]);
 
   const notify = useCallback(
@@ -111,7 +135,17 @@ export function useAgentResponseRequiredNotifications({
     [onDebug],
   );
 
-  const latestUnnotifiedApproval = useMemo(() => {
+  useEffect(
+    () => () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const latestUnnotifiedApproval = (() => {
     for (let index = approvals.length - 1; index >= 0; index -= 1) {
       const approval = approvals[index];
       if (!approval) {
@@ -123,13 +157,14 @@ export function useAgentResponseRequiredNotifications({
       }
     }
     return null;
-  }, [approvals]);
+  })();
 
   useEffect(() => {
     if (!latestUnnotifiedApproval) {
       return;
     }
     if (!canNotifyNow()) {
+      scheduleRetry();
       return;
     }
 
@@ -159,9 +194,11 @@ export function useAgentResponseRequiredNotifications({
     getWorkspaceName,
     latestUnnotifiedApproval,
     notify,
+    retrySignal,
+    scheduleRetry,
   ]);
 
-  const latestUnnotifiedQuestion = useMemo(() => {
+  const latestUnnotifiedQuestion = (() => {
     for (let index = userInputRequests.length - 1; index >= 0; index -= 1) {
       const request = userInputRequests[index];
       if (!request) {
@@ -173,13 +210,14 @@ export function useAgentResponseRequiredNotifications({
       }
     }
     return null;
-  }, [userInputRequests]);
+  })();
 
   useEffect(() => {
     if (!latestUnnotifiedQuestion) {
       return;
     }
     if (!canNotifyNow()) {
+      scheduleRetry();
       return;
     }
 
@@ -208,8 +246,34 @@ export function useAgentResponseRequiredNotifications({
     getWorkspaceName,
     latestUnnotifiedQuestion,
     notify,
+    retrySignal,
+    scheduleRetry,
     userInputRequests,
   ]);
+
+  useEffect(() => {
+    if (!pendingPlanNotificationsRef.current.size) {
+      return;
+    }
+    if (!canNotifyNow()) {
+      scheduleRetry();
+      return;
+    }
+    const next = pendingPlanNotificationsRef.current.entries().next().value as
+      | [string, PendingPlanNotification]
+      | undefined;
+    if (!next) {
+      return;
+    }
+    const [key, pending] = next;
+    pendingPlanNotificationsRef.current.delete(key);
+    notifiedPlanItemsRef.current.add(key);
+    setPendingPlansSignal((value) => value + 1);
+    void notify(pending.title, pending.body, pending.extra);
+    if (pendingPlanNotificationsRef.current.size) {
+      scheduleRetry();
+    }
+  }, [canNotifyNow, notify, pendingPlansSignal, retrySignal, scheduleRetry]);
 
   const onItemCompleted = useCallback(
     (workspaceId: string, threadId: string, item: Record<string, unknown>) => {
@@ -225,30 +289,36 @@ export function useAgentResponseRequiredNotifications({
         return;
       }
       const key = buildPlanKey(workspaceId, threadId, itemId);
-      if (notifiedPlanItemsRef.current.has(key)) {
+      if (
+        notifiedPlanItemsRef.current.has(key) ||
+        pendingPlanNotificationsRef.current.has(key)
+      ) {
         return;
       }
-      if (!canNotifyNow()) {
-        return;
-      }
-      notifiedPlanItemsRef.current.add(key);
-
       const workspaceName = getWorkspaceName?.(workspaceId);
       const title = workspaceName ? `Plan ready — ${workspaceName}` : "Plan ready";
       const text = String(item.text ?? "").trim();
       const body = text
         ? truncateText(text.split("\n")[0] ?? text, MAX_BODY_LENGTH)
         : "Plan is ready. Open CodexMonitor to respond.";
-
-      void notify(title, body, {
+      const extra = {
         kind: "response_required",
         type: "plan",
         workspaceId,
         threadId,
         itemId,
-      });
+      };
+      if (!canNotifyNow()) {
+        pendingPlanNotificationsRef.current.set(key, { title, body, extra });
+        setPendingPlansSignal((value) => value + 1);
+        scheduleRetry();
+        return;
+      }
+      notifiedPlanItemsRef.current.add(key);
+
+      void notify(title, body, extra);
     },
-    [canNotifyNow, getWorkspaceName, notify],
+    [canNotifyNow, getWorkspaceName, notify, scheduleRetry],
   );
 
   useAppServerEvents(
@@ -260,4 +330,3 @@ export function useAgentResponseRequiredNotifications({
     ),
   );
 }
-

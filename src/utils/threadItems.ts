@@ -505,6 +505,7 @@ export function upsertItem(list: ConversationItem[], item: ConversationItem) {
   if (existing.kind === "tool" && item.kind === "tool") {
     const existingOutput = existing.output ?? "";
     const incomingOutput = item.output ?? "";
+    const hasIncomingOutput = incomingOutput.trim().length > 0;
     const hasIncomingChanges = (item.changes?.length ?? 0) > 0;
     next[index] = {
       ...existing,
@@ -512,8 +513,7 @@ export function upsertItem(list: ConversationItem[], item: ConversationItem) {
       title: item.title?.trim() ? item.title : existing.title,
       detail: item.detail?.trim() ? item.detail : existing.detail,
       status: item.status?.trim() ? item.status : existing.status,
-      output:
-        incomingOutput.length >= existingOutput.length ? incomingOutput : existingOutput,
+      output: hasIncomingOutput ? incomingOutput : existingOutput,
       changes: hasIncomingChanges ? item.changes : existing.changes,
       durationMs:
         typeof item.durationMs === "number" ? item.durationMs : existing.durationMs,
@@ -899,13 +899,13 @@ function chooseRicherItem(remote: ConversationItem, local: ConversationItem) {
     return localLength > remoteLength ? local : remote;
   }
   if (remote.kind === "tool" && local.kind === "tool") {
-    const remoteLength = (remote.output ?? "").length;
-    const localLength = (local.output ?? "").length;
-    const base = localLength > remoteLength ? local : remote;
+    const remoteOutput = remote.output ?? "";
+    const localOutput = local.output ?? "";
+    const hasRemoteOutput = remoteOutput.trim().length > 0;
     return {
-      ...base,
+      ...remote,
       status: remote.status ?? local.status,
-      output: localLength > remoteLength ? local.output : remote.output,
+      output: hasRemoteOutput ? remoteOutput : localOutput,
       changes: remote.changes ?? local.changes,
     };
   }

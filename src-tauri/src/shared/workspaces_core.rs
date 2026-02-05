@@ -282,6 +282,7 @@ pub(crate) async fn add_worktree_core<
     parent_id: String,
     branch: String,
     name: Option<String>,
+    copy_agents_md: bool,
     data_dir: &PathBuf,
     workspaces: &Mutex<HashMap<String, WorkspaceEntry>>,
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
@@ -371,7 +372,9 @@ where
         .await?;
     }
 
-    copy_agents_md_from_parent_to_worktree(&repo_path, &worktree_path)?;
+    if copy_agents_md {
+        copy_agents_md_from_parent_to_worktree(&repo_path, &worktree_path)?;
+    }
 
     let entry = WorkspaceEntry {
         id: Uuid::new_v4().to_string(),

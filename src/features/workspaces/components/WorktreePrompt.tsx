@@ -10,11 +10,13 @@ type WorktreePromptProps = {
   branch: string;
   branchWasEdited?: boolean;
   branchSuggestions?: BranchInfo[];
+  copyAgentsMd: boolean;
   setupScript: string;
   scriptError?: string | null;
   error?: string | null;
   onNameChange: (value: string) => void;
   onChange: (value: string) => void;
+  onCopyAgentsMdChange: (value: boolean) => void;
   onSetupScriptChange: (value: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -28,11 +30,13 @@ export function WorktreePrompt({
   branch,
   branchWasEdited = false,
   branchSuggestions = [],
+  copyAgentsMd,
   setupScript,
   scriptError = null,
   error = null,
   onNameChange,
   onChange,
+  onCopyAgentsMdChange,
   onSetupScriptChange,
   onCancel,
   onConfirm,
@@ -224,6 +228,22 @@ export function WorktreePrompt({
               onSelect={handleBranchSelect}
             />
           )}
+        </div>
+        <div className="worktree-modal-checkbox-row">
+          <input
+            id="worktree-copy-agents"
+            type="checkbox"
+            className="worktree-modal-checkbox-input"
+            checked={copyAgentsMd}
+            disabled={isBusy}
+            onChange={(event) => onCopyAgentsMdChange(event.target.checked)}
+          />
+          <label
+            className="worktree-modal-checkbox-label"
+            htmlFor="worktree-copy-agents"
+          >
+            Copy <code>AGENTS.md</code> into the worktree
+          </label>
         </div>
         <div className="worktree-modal-divider" />
         <div className="worktree-modal-section-title">Environment setup script</div>

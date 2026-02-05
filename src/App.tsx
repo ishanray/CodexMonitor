@@ -917,6 +917,7 @@ function MainApp() {
     cancelPrompt: cancelWorktreePrompt,
     updateName: updateWorktreeName,
     updateBranch: updateWorktreeBranch,
+    updateCopyAgentsMd: updateWorktreeCopyAgentsMd,
     updateSetupScript: updateWorktreeSetupScript,
   } = useWorktreePrompt({
     addWorktreeAgent,
@@ -2305,6 +2306,7 @@ function MainApp() {
         worktreePrompt={worktreePrompt}
         onWorktreePromptNameChange={updateWorktreeName}
         onWorktreePromptChange={updateWorktreeBranch}
+        onWorktreePromptCopyAgentsMdChange={updateWorktreeCopyAgentsMd}
         onWorktreeSetupScriptChange={updateWorktreeSetupScript}
         onWorktreePromptCancel={cancelWorktreePrompt}
         onWorktreePromptConfirm={confirmWorktreePrompt}

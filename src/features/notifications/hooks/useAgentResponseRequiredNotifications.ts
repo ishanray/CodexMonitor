@@ -168,10 +168,11 @@ export function useAgentResponseRequiredNotifications({
       return;
     }
 
-    approvals.forEach((approval) => {
-      const key = buildApprovalKey(approval.workspace_id, approval.request_id);
-      notifiedApprovalsRef.current.add(key);
-    });
+    const approvalKey = buildApprovalKey(
+      latestUnnotifiedApproval.workspace_id,
+      latestUnnotifiedApproval.request_id,
+    );
+    notifiedApprovalsRef.current.add(approvalKey);
 
     const workspaceName = getWorkspaceName?.(latestUnnotifiedApproval.workspace_id);
     const title = workspaceName
@@ -188,8 +189,8 @@ export function useAgentResponseRequiredNotifications({
       workspaceId: latestUnnotifiedApproval.workspace_id,
       requestId: latestUnnotifiedApproval.request_id,
     });
+    scheduleRetry();
   }, [
-    approvals,
     canNotifyNow,
     getWorkspaceName,
     latestUnnotifiedApproval,
@@ -221,10 +222,11 @@ export function useAgentResponseRequiredNotifications({
       return;
     }
 
-    userInputRequests.forEach((request) => {
-      const key = buildUserInputKey(request.workspace_id, request.request_id);
-      notifiedUserInputsRef.current.add(key);
-    });
+    const questionKey = buildUserInputKey(
+      latestUnnotifiedQuestion.workspace_id,
+      latestUnnotifiedQuestion.request_id,
+    );
+    notifiedUserInputsRef.current.add(questionKey);
 
     const workspaceName = getWorkspaceName?.(latestUnnotifiedQuestion.workspace_id);
     const title = workspaceName ? `Question — ${workspaceName}` : "Question";
@@ -241,6 +243,7 @@ export function useAgentResponseRequiredNotifications({
       turnId: latestUnnotifiedQuestion.params.turn_id,
       itemId: latestUnnotifiedQuestion.params.item_id,
     });
+    scheduleRetry();
   }, [
     canNotifyNow,
     getWorkspaceName,
@@ -248,7 +251,6 @@ export function useAgentResponseRequiredNotifications({
     notify,
     retrySignal,
     scheduleRetry,
-    userInputRequests,
   ]);
 
   useEffect(() => {

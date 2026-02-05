@@ -88,6 +88,106 @@ describe("useAgentResponseRequiredNotifications", () => {
     });
   });
 
+  it("notifies each pending approval request without suppressing older ones", async () => {
+    const approvals: ApprovalRequest[] = [
+      {
+        workspace_id: "ws-1",
+        request_id: 1,
+        method: "workspace/requestApproval",
+        params: { command: "npm run lint" },
+      },
+      {
+        workspace_id: "ws-1",
+        request_id: 2,
+        method: "workspace/requestApproval",
+        params: { command: "npm run test" },
+      },
+    ];
+
+    renderHook(() =>
+      useAgentResponseRequiredNotifications({
+        enabled: true,
+        isWindowFocused: false,
+        approvals,
+        userInputRequests: [],
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendNotification).mock.calls[0]?.[2]).toMatchObject({
+      extra: { type: "approval", requestId: 2 },
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(sendNotification).mock.calls[1]?.[2]).toMatchObject({
+      extra: { type: "approval", requestId: 1 },
+    });
+  });
+
+  it("notifies each pending question request without suppressing older ones", async () => {
+    const userInputRequests: RequestUserInputRequest[] = [
+      {
+        workspace_id: "ws-1",
+        request_id: 10,
+        params: {
+          thread_id: "thread-1",
+          turn_id: "turn-1",
+          item_id: "item-1",
+          questions: [{ id: "q-1", header: "Question one", question: "Choose one" }],
+        },
+      },
+      {
+        workspace_id: "ws-1",
+        request_id: 11,
+        params: {
+          thread_id: "thread-1",
+          turn_id: "turn-2",
+          item_id: "item-2",
+          questions: [{ id: "q-2", header: "Question two", question: "Choose two" }],
+        },
+      },
+    ];
+
+    renderHook(() =>
+      useAgentResponseRequiredNotifications({
+        enabled: true,
+        isWindowFocused: false,
+        approvals: [],
+        userInputRequests,
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendNotification).mock.calls[0]?.[2]).toMatchObject({
+      extra: { type: "question", requestId: 11 },
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(sendNotification).mock.calls[1]?.[2]).toMatchObject({
+      extra: { type: "question", requestId: 10 },
+    });
+  });
+
   it("queues plan notifications that arrive inside the throttle window", async () => {
     renderHook(() =>
       useAgentResponseRequiredNotifications({

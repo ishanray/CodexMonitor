@@ -416,33 +416,42 @@ function MainApp() {
     selectedCollaborationMode,
     selectedCollaborationModeId,
     setSelectedCollaborationModeId,
-  } = useCollaborationModes({
-    activeWorkspace,
-    enabled: appSettings.collaborationModesEnabled,
-    onDebug: addDebugEntry,
-  });
+	  } = useCollaborationModes({
+	    activeWorkspace,
+	    enabled: appSettings.collaborationModesEnabled,
+	    onDebug: addDebugEntry,
+	  });
 
-  useComposerShortcuts({
-    textareaRef: composerInputRef,
-    modelShortcut: appSettings.composerModelShortcut,
-    accessShortcut: appSettings.composerAccessShortcut,
-    reasoningShortcut: appSettings.composerReasoningShortcut,
-    collaborationShortcut: appSettings.collaborationModesEnabled
-      ? appSettings.composerCollaborationShortcut
-      : null,
-    models,
-    collaborationModes,
-    selectedModelId,
-    onSelectModel: setSelectedModelId,
-    selectedCollaborationModeId,
-    onSelectCollaborationMode: setSelectedCollaborationModeId,
-    accessMode,
-    onSelectAccessMode: setAccessMode,
-    reasoningOptions,
-    selectedEffort,
-    onSelectEffort: setSelectedEffort,
-    reasoningSupported,
-  });
+	  const composerShortcuts = {
+	    modelShortcut: appSettings.composerModelShortcut,
+	    accessShortcut: appSettings.composerAccessShortcut,
+	    reasoningShortcut: appSettings.composerReasoningShortcut,
+	    collaborationShortcut: appSettings.collaborationModesEnabled
+	      ? appSettings.composerCollaborationShortcut
+	      : null,
+	    models,
+	    collaborationModes,
+	    selectedModelId,
+	    onSelectModel: setSelectedModelId,
+	    selectedCollaborationModeId,
+	    onSelectCollaborationMode: setSelectedCollaborationModeId,
+	    accessMode,
+	    onSelectAccessMode: setAccessMode,
+	    reasoningOptions,
+	    selectedEffort,
+	    onSelectEffort: setSelectedEffort,
+	    reasoningSupported,
+	  };
+
+	  useComposerShortcuts({
+	    textareaRef: composerInputRef,
+	    ...composerShortcuts,
+	  });
+
+	  useComposerShortcuts({
+	    textareaRef: workspaceHomeTextareaRef,
+	    ...composerShortcuts,
+	  });
 
   useComposerMenuActions({
     models,

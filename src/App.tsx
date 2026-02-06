@@ -890,6 +890,8 @@ function MainApp() {
     ensureTerminalWithTitle,
     restartTerminalSession,
     openTerminal,
+    terminalState,
+    activeTerminalId,
     onDebug: addDebugEntry,
   });
 

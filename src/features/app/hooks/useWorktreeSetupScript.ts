@@ -1,22 +1,27 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { DebugEntry, WorkspaceInfo } from "../../../types";
 import { buildErrorDebugEntry } from "../../../utils/debugEntries";
 import {
   getWorktreeSetupStatus,
   markWorktreeSetupRan,
-  openTerminalSession,
   writeTerminalSession,
 } from "../../../services/tauri";
+import type { TerminalSessionState } from "../../terminal/hooks/useTerminalSession";
 
 const WORKTREE_SETUP_TERMINAL_ID = "worktree-setup";
 const WORKTREE_SETUP_TERMINAL_TITLE = "Setup";
-const DEFAULT_TERMINAL_COLS = 120;
-const DEFAULT_TERMINAL_ROWS = 32;
+type PendingWorktreeSetup = {
+  workspaceId: string;
+  terminalId: string;
+  script: string;
+};
 
 type UseWorktreeSetupScriptOptions = {
   ensureTerminalWithTitle: (workspaceId: string, terminalId: string, title: string) => string;
   restartTerminalSession: (workspaceId: string, terminalId: string) => Promise<void>;
   openTerminal: () => void;
+  terminalState: TerminalSessionState | null;
+  activeTerminalId: string | null;
   onDebug?: (entry: DebugEntry) => void;
 };
 
@@ -28,9 +33,12 @@ export function useWorktreeSetupScript({
   ensureTerminalWithTitle,
   restartTerminalSession,
   openTerminal,
+  terminalState,
+  activeTerminalId,
   onDebug,
 }: UseWorktreeSetupScriptOptions): WorktreeSetupScriptState {
   const runningRef = useRef<Set<string>>(new Set());
+  const pendingRunRef = useRef<PendingWorktreeSetup | null>(null);
 
   const maybeRunWorktreeSetupScript = useCallback(
     async (worktree: WorkspaceInfo) => {
@@ -61,14 +69,11 @@ export function useWorktreeSetupScript({
           onDebug?.(buildErrorDebugEntry("worktree setup restart error", error));
         }
 
-        await openTerminalSession(
-          worktree.id,
+        pendingRunRef.current = {
+          workspaceId: worktree.id,
           terminalId,
-          DEFAULT_TERMINAL_COLS,
-          DEFAULT_TERMINAL_ROWS,
-        );
-        await writeTerminalSession(worktree.id, terminalId, `${script}\n`);
-        await markWorktreeSetupRan(worktree.id);
+          script,
+        };
       } catch (error) {
         onDebug?.(buildErrorDebugEntry("worktree setup script error", error));
       } finally {
@@ -77,6 +82,28 @@ export function useWorktreeSetupScript({
     },
     [ensureTerminalWithTitle, onDebug, openTerminal, restartTerminalSession],
   );
+
+  useEffect(() => {
+    const pending = pendingRunRef.current;
+    const pendingKey = pending
+      ? `${pending.workspaceId}:${pending.terminalId}`
+      : null;
+    if (
+      !pending ||
+      terminalState?.readyKey !== pendingKey ||
+      activeTerminalId !== pending.terminalId
+    ) {
+      return;
+    }
+
+    pendingRunRef.current = null;
+
+    writeTerminalSession(pending.workspaceId, pending.terminalId, `${pending.script}\n`)
+      .then(() => markWorktreeSetupRan(pending.workspaceId))
+      .catch((error) => {
+        onDebug?.(buildErrorDebugEntry("worktree setup script error", error));
+      });
+  }, [activeTerminalId, onDebug, terminalState?.readyKey]);
 
   return {
     maybeRunWorktreeSetupScript,

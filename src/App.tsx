@@ -709,7 +709,7 @@ function MainApp() {
     collaborationMode: collaborationModePayload,
     accessMode,
     reviewDeliveryMode: appSettings.reviewDeliveryMode,
-    steerEnabled: appSettings.experimentalSteerEnabled,
+    steerEnabled: appSettings.steerEnabled,
     customPrompts: prompts,
     onMessageActivity: queueGitStatusRefresh
   });
@@ -1161,7 +1161,7 @@ function MainApp() {
     activeWorkspace,
     isProcessing,
     isReviewing,
-    steerEnabled: appSettings.experimentalSteerEnabled,
+    steerEnabled: appSettings.steerEnabled,
     appsEnabled: appSettings.experimentalAppsEnabled,
     connectWorkspace,
     startThreadForWorkspace,
@@ -2043,7 +2043,7 @@ function MainApp() {
     onFileAutocompleteActiveChange: setFileAutocompleteActive,
     isReviewing,
     isProcessing,
-    steerEnabled: appSettings.experimentalSteerEnabled,
+    steerEnabled: appSettings.steerEnabled,
     reviewPrompt,
     onReviewPromptClose: closeReviewPrompt,
     onReviewPromptShowPreset: showPresetStep,
